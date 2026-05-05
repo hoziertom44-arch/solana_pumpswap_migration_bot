@@ -1,0 +1,7 @@
+websockets
+requests
+python-dotenv
+solders
+solana
+base58
+rich
