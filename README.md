@@ -1,20 +1,43 @@
-<h1 align="center">SOLANA SNIPER BOT</h1>
+<!-- ============================================ -->
+<!--   SOLANA SNIPER BOT — README                 -->
+<!--   github.com/hoziertom44-arch                -->
+<!-- ============================================ -->
 
-<p align="center">
-  <strong>Pump.fun + Meteora · Built in Python · Free</strong>
-</p>
+<div align="center">
 
-<p align="center">
-  Snipes memecoins the second they migrate. Dual launchpad, scam filters baked in, live PnL tracking.
-</p>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12,20,30&height=220&section=header&text=SOLANA%20SNIPER%20BOT&fontSize=60&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Pump.fun%20%2B%20Meteora%20%C2%B7%20Built%20in%20Python%20%C2%B7%20Free&descAlignY=58&descSize=18" width="100%" />
 
-<p align="center">
-  <a href="https://youtu.be/0UsQ3zcf2SU">Watch the build</a> ·
-  <a href="https://t.me/rektcodercommunity">Join community</a> ·
-  <a href="https://github.com/hoziertom44-arch/solana_pumpswap_migration_bot/issues">Report issue</a>
-</p>
+<br/>
 
----
+<a href="https://youtu.be/0UsQ3zcf2SU"><img src="https://img.shields.io/badge/▶_Watch_The_Build-FF0000?style=for-the-badge&logoColor=white" /></a>
+<a href="https://t.me/rektcodercommunity"><img src="https://img.shields.io/badge/Join_Community-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" /></a>
+<a href="https://x.com/rektcoder_"><img src="https://img.shields.io/badge/Follow-000000?style=for-the-badge&logo=x&logoColor=white" /></a>
+
+<br/><br/>
+
+<img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" />
+<img src="https://img.shields.io/badge/solana-9945FF?style=flat-square&logo=solana&logoColor=white" />
+<img src="https://img.shields.io/badge/pump.fun-00D632?style=flat-square" />
+<img src="https://img.shields.io/badge/meteora-FF6B35?style=flat-square" />
+<img src="https://img.shields.io/badge/jupiter-FBA43A?style=flat-square" />
+<img src="https://img.shields.io/badge/helius-7B3FF2?style=flat-square" />
+<img src="https://img.shields.io/badge/license-MIT-yellow?style=flat-square" />
+
+<br/><br/>
+
+<a href="https://readme-typing-svg.demolab.com">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=22&pause=1000&color=9945FF&center=true&vCenter=true&width=600&lines=Snipes+memecoins+the+second+they+migrate.;Dual+launchpad.+Filters+the+rugs.+Free+code." />
+</a>
+
+</div>
+
+<br/>
+
+> **It doesn't snipe launches. It snipes migrations.** The market filters the dead tokens for you. The bot just catches the survivors.
+
+<br/>
+
+## ⚡ quickstart
 
 ​```bash
 git clone https://github.com/hoziertom44-arch/solana_pumpswap_migration_bot
@@ -23,49 +46,90 @@ pip install -r requirements.txt
 python main.py
 ​```
 
----
+<br/>
 
-## the idea
+## 🎯 how it works
 
-Most sniper bots watch one launchpad and buy anything. This one watches two and filters out 90% of what crosses the wire.
-
-It doesn't snipe launches. It snipes migrations — the moment a token graduates from a bonding curve to a real AMM pool. That's when liquidity is locked, the token survived initial selling pressure, and price discovery actually starts.
-
-The market does the filtering for you. The bot just catches the survivors.
-
-## what it does
+<div align="center">
 
 ​```
-pump.fun migration ─┐
-                    ├─→ filters ─→ buy ─→ live pnl ─→ sell
-meteora migration ──┘
+   ┌───────────────────┐         ┌───────────────────┐
+   │  pump.fun migrate │         │  meteora migrate  │
+   │   (pump portal)   │         │     (helius)      │
+   └─────────┬─────────┘         └─────────┬─────────┘
+             │                             │
+             └──────────────┬──────────────┘
+                            ▼
+                   ╔════════════════╗
+                   ║  scam filters  ║
+                   ╚════════╤═══════╝
+                            ▼
+                   ╔════════════════╗
+                   ║   auto buy     ║
+                   ╚════════╤═══════╝
+                            ▼
+                   ╔════════════════╗
+                   ║  live pnl 5s   ║
+                   ╚════════╤═══════╝
+                            ▼
+                   ╔════════════════╗
+                   ║  manual sell   ║
+                   ╚════════════════╝
 ​```
 
-Two websocket listeners, four filters, two buy paths, one terminal UI. Six Python files total.
+</div>
 
-**Filters**
-- Word blacklist (partial + exact match)
-- Dev wallet history (skip if creator launched > N tokens)
-- Duplicate names within session
-- Stale migration cutoff (120s)
+<table>
+<tr>
+<td width="33%" valign="top">
 
-**Buy paths**
-- Pump Portal trade API for pump.fun tokens
-- Jupiter swap for Meteora tokens
+#### 🎧 listeners
+Pump Portal websocket for pump.fun. Helius websocket for Meteora DBC. Both fire the second a token graduates.
 
-**Tracking**
-- Live PnL every 5s via Jupiter quote
-- Real wallet balance diff for actual profit
+</td>
+<td width="33%" valign="top">
 
-## setup
+#### 🛡️ filters
+Blacklist words. Dev wallet history. Duplicate name skip. Freshness cutoff at 120s. Most rugs die here.
 
-You'll need three things — none of them cost money to get started.
+</td>
+<td width="33%" valign="top">
 
-| | |
-|---|---|
-| [Helius](https://www.helius.dev) | RPC + websocket |
-| [Pump Portal](https://pumpportal.fun) | Pump.fun trades + free wallet |
-| [Phantom](https://phantom.app) | View your bot wallet |
+#### 💸 execution
+Pump Portal for pump.fun, Jupiter swap for Meteora. Real wallet balance diff for true PnL — no estimates.
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+## 🛠️ setup
+
+You need three things. All free to start.
+
+<table>
+<tr>
+<td width="33%" align="center">
+  <a href="https://www.helius.dev">
+    <img src="https://img.shields.io/badge/HELIUS-7B3FF2?style=for-the-badge&logoColor=white" /><br/>
+    <sub>RPC + Websocket</sub>
+  </a>
+</td>
+<td width="33%" align="center">
+  <a href="https://pumpportal.fun">
+    <img src="https://img.shields.io/badge/PUMP_PORTAL-00D632?style=for-the-badge&logoColor=white" /><br/>
+    <sub>Pump.fun trades + wallet</sub>
+  </a>
+</td>
+<td width="33%" align="center">
+  <a href="https://phantom.app">
+    <img src="https://img.shields.io/badge/PHANTOM-AB9FF2?style=for-the-badge&logoColor=white" /><br/>
+    <sub>View your bot wallet</sub>
+  </a>
+</td>
+</tr>
+</table>
 
 Copy `.env.example` to `.env` and fill it in:
 
@@ -78,11 +142,11 @@ WALLET_PUBLIC_KEY=
 WALLET_PRIVATE_KEY=
 ​```
 
-Fund the Pump Portal wallet with some SOL. 0.1 to 0.5 is enough to test.
+Fund the Pump Portal wallet with 0.1–0.5 SOL to test. Import the private key into Phantom so you can actually see what your bot is doing.
 
-Pump Portal doesn't have a UI for the wallet it generates, so import the private key into Phantom if you want to see what's happening.
+<br/>
 
-## tuning
+## 🎛️ tuning
 
 Everything lives in `config.py`.
 
@@ -95,71 +159,111 @@ MAX_DEV_TOKENS = 5          # skip serial scammers
 SKIP_DUPLICATE_NAMES = True
 ​```
 
-Two presets I run depending on the day:
+<table>
+<tr>
+<td width="50%" valign="top">
+
+#### 🔥 aggressive
+More catches, more rugs.
 
 ​```python
-# aggressive — more catches, more rugs
 MAX_DEV_TOKENS = 15
 BUY_AMOUNT_SOL = 0.1
+​```
 
-# conservative — fewer catches, cleaner picks
+</td>
+<td width="50%" valign="top">
+
+#### 🛡️ conservative
+Fewer catches, cleaner picks.
+
+​```python
 MAX_DEV_TOKENS = 2
 BUY_AMOUNT_SOL = 0.01
 ASCII_NAMES_ONLY = True
 ​```
 
-## how the dev check works
+</td>
+</tr>
+</table>
 
-When a migration hits, the bot calls Helius `getAssetsByCreator` and counts how many tokens this wallet has launched. If it's above `MAX_DEV_TOKENS`, skip.
+<br/>
 
-Real builders launch one or two tokens. Scam farms launch fifty. This single filter kills more rugs than every other check combined.
+## 🧠 the filters
 
-## how the freshness check works
+#### dev wallet check
+Bot calls Helius `getAssetsByCreator` and counts how many tokens this wallet has launched. Above `MAX_DEV_TOKENS` → skip. Real builders launch one or two. Scam farms launch fifty.
 
-For Meteora migrations the bot pulls `pairCreatedAt` from DexScreener. Anything older than 120 seconds gets dropped — by then the snipe window is closed and you're just exit liquidity for whoever caught it first.
+#### freshness check
+Pulls `pairCreatedAt` from DexScreener for Meteora migrations. Older than 120s → skip. Late entry just means buying someone else's exit liquidity.
 
-## from the demo
+<br/>
 
-The video walks through a real run end to end:
+## 📊 from the demo
 
-​```
-start          0.508 SOL
-caught         pump.fun migration
-bought         0.1 SOL
-low            -71%
-peak           +200%
-sold           +0.044 SOL
-​```
+<div align="center">
 
-→ [youtu.be/0UsQ3zcf2SU](https://youtu.be/0UsQ3zcf2SU)
+| | |
+|---|---|
+| **start** | 0.508 SOL |
+| **caught** | pump.fun migration |
+| **bought** | 0.1 SOL |
+| **low** | <kbd>-71%</kbd> |
+| **peak** | <kbd>+200%</kbd> |
+| **sold** | <kbd>+0.044 SOL</kbd> |
 
-## stack
+<br/>
 
-Python 3.10+, websockets, requests, rich, solders, solana-py, python-dotenv.
+<a href="https://youtu.be/0UsQ3zcf2SU">
+  <img src="https://img.shields.io/badge/▶_Watch_Full_Demo-FF0000?style=for-the-badge&logoColor=white" />
+</a>
 
-That's it. No frameworks, no SDK soup.
+</div>
 
-## files
+<br/>
+
+## 📁 files
 
 ​```
 main.py            listeners + main loop
-trade.py           buy/sell + dev history
+trade.py           buy / sell + dev history
 display.py         terminal UI
 balance.py         wallet helpers
 config.py          all settings
-requirements.txt
+requirements.txt   dependencies
 ​```
 
-## disclaimer
+<br/>
 
-For education. Sniping memecoins is high risk and most tokens go to zero. Don't trade money you can't lose. Not financial advice.
+## 📦 stack
 
-## who
+<p align="center">
+<img src="https://skillicons.dev/icons?i=python,vscode,github" />
+</p>
 
-Built by Tom — [@rektcoder](https://www.youtube.com/@rektcoder). I drop a new bot every week, all open source, all on telegram.
+Python 3.10+, websockets, requests, rich, solders, solana-py, python-dotenv. No frameworks, no SDK soup.
 
-[YouTube](https://www.youtube.com/@rektcoder) · [Channel](https://t.me/rektcoderchannel) · [Community](https://t.me/rektcodercommunity) · [Twitter](https://x.com/rektcoder_)
+<br/>
 
-## license
+## ⚠️ disclaimer
 
-MIT.
+For education. Sniping memecoins is extremely high risk and most tokens go to zero. Don't trade money you can't afford to lose. Not financial advice.
+
+<br/>
+
+## 👤 who
+
+<div align="center">
+
+Built by **Tom** — I drop a new bot every week, all open source, all free.
+
+<a href="https://www.youtube.com/@rektcoder"><img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" /></a>
+<a href="https://t.me/rektcoderchannel"><img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" /></a>
+<a href="https://t.me/rektcodercommunity"><img src="https://img.shields.io/badge/Community-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" /></a>
+<a href="https://x.com/rektcoder_"><img src="https://img.shields.io/badge/Twitter-000000?style=for-the-badge&logo=x&logoColor=white" /></a>
+
+<br/><br/>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12,20,30&height=120&section=footer" width="100%" />
+
+</div>
