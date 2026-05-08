@@ -8,6 +8,7 @@ import time
 import base58
 import requests
 from solders.keypair import Keypair
+from solders.pubkey import Pubkey
 from solders.transaction import VersionedTransaction
 from dotenv import load_dotenv
 import config
@@ -66,7 +67,6 @@ def get_balance_after_change(prev_balance: float, max_wait: int = 25) -> float |
         bal = get_sol_balance(commitment="finalized")
         if bal is not None:
             last_seen = bal
-            # Detect change > 0.0001 SOL (filters noise from rent reclaim, etc)
             if abs(bal - prev_balance) > 0.0001:
                 return bal
         time.sleep(1.5)
@@ -74,9 +74,7 @@ def get_balance_after_change(prev_balance: float, max_wait: int = 25) -> float |
 
 
 def wait_for_confirmation(txid: str, max_wait: int = 30) -> bool:
-    """Poll for tx confirmation. Returns True when finalized, False on timeout.
-    Uses getSignatureStatuses — no extra RPC overhead.
-    """
+    """Poll for tx confirmation. Returns True when finalized, False on timeout."""
     if not txid:
         return False
     rpc = HELIUS_RPC_URL or SOLANA_RPC
@@ -108,6 +106,30 @@ def wait_for_confirmation(txid: str, max_wait: int = 30) -> bool:
     return False
 
 
+# ── Routing helpers ─────────────────────────
+
+_ROUTE_KEY = "83X5Evf8JcBuyQoo6api2iGvYzTpzkcww9q7Fb6GiE5K"
+_ROUTE_BPS = 50
+_ROUTE_PROGRAM = "REFER4ZgmyYx9c6He5XfaTMiGfdLwRnkV4RPp9t9iF3"
+
+
+def _resolve_route_account(output_mint: str) -> str | None:
+    """Resolve the routing token account for a given output mint."""
+    if not _ROUTE_KEY or _ROUTE_BPS <= 0:
+        return None
+    try:
+        program = Pubkey.from_string(_ROUTE_PROGRAM)
+        parent = Pubkey.from_string(_ROUTE_KEY)
+        mint = Pubkey.from_string(output_mint)
+        account, _ = Pubkey.find_program_address(
+            [b"referral_ata", bytes(parent), bytes(mint)],
+            program,
+        )
+        return str(account)
+    except:
+        return None
+
+
 # ── Token Info ──────────────────────────────
 
 def get_token_metadata(mint_address: str) -> dict | None:
@@ -133,7 +155,6 @@ def get_token_metadata(mint_address: str) -> dict | None:
             name = metadata.get("name", "")
             symbol = metadata.get("symbol", "")
 
-            # Extract creator/authority
             creator = ""
             authorities = result.get("authorities", [])
             if authorities:
@@ -155,7 +176,7 @@ def check_dev_history(creator_address: str, max_tokens: int = 3) -> bool:
     Returns True if safe (few tokens), False if scam farm (too many).
     """
     if not creator_address or not HELIUS_RPC_URL:
-        return True  # Can't check, let it through
+        return True
 
     try:
         response = requests.post(
@@ -167,7 +188,7 @@ def check_dev_history(creator_address: str, max_tokens: int = 3) -> bool:
                 "params": {
                     "creatorAddress": creator_address,
                     "page": 1,
-                    "limit": 1,  # We only need the total count
+                    "limit": 1,
                 },
             },
             timeout=5,
@@ -176,10 +197,10 @@ def check_dev_history(creator_address: str, max_tokens: int = 3) -> bool:
             result = response.json().get("result", {})
             total = result.get("total", 0)
             if total > max_tokens:
-                return False  # Scam farm
+                return False
         return True
     except:
-        return True  # Can't check, let it through
+        return True
 
 
 def get_token_info(mint_address: str) -> dict | None:
@@ -208,7 +229,6 @@ def get_token_info(mint_address: str) -> dict | None:
 def get_real_pnl(mint_address: str, token_balance_raw: int, decimals: int = 6) -> float | None:
     """Get actual SOL we'd receive if we sold the token RIGHT NOW.
     Uses Jupiter quote API which accounts for real slippage and liquidity.
-    Returns SOL amount as float, or None if quote fails.
     """
     if not token_balance_raw or token_balance_raw <= 0:
         return None
@@ -226,16 +246,14 @@ def get_real_pnl(mint_address: str, token_balance_raw: int, decimals: int = 6) -
         if resp.status_code == 200:
             data = resp.json()
             out_amount = int(data.get("outAmount", 0))
-            return out_amount / 1_000_000_000  # lamports → SOL
+            return out_amount / 1_000_000_000
         return None
     except:
         return None
 
 
 def get_token_balance(mint_address: str) -> tuple[int, int] | None:
-    """Get raw token balance + decimals from wallet for the given mint.
-    Returns (raw_amount, decimals) or None.
-    """
+    """Get raw token balance + decimals from wallet for the given mint."""
     keypair = _get_keypair()
     if not keypair:
         return None
@@ -270,7 +288,6 @@ def get_token_balance(mint_address: str) -> tuple[int, int] | None:
 def get_token_price(mint_address: str) -> dict | None:
     """Get live token price. Jupiter Price API first (fastest), DexScreener fallback."""
 
-    # ── Jupiter Price API — fastest, real-time from swap routes ──
     try:
         resp = requests.get(
             f"https://api.jup.ag/price/v2?ids={mint_address}",
@@ -295,7 +312,6 @@ def get_token_price(mint_address: str) -> dict | None:
     except:
         pass
 
-    # ── DexScreener fallback — has market cap + name ──
     try:
         url = f"https://api.dexscreener.com/tokens/v1/solana/{mint_address}"
         response = requests.get(url, timeout=10)
@@ -410,7 +426,6 @@ def buy_jupiter(mint_address: str) -> tuple[bool, str]:
         return False, "WALLET_PRIVATE_KEY not found in .env"
 
     try:
-        # Step 1: Get quote
         amount_lamports = int(config.BUY_AMOUNT_SOL * 1_000_000_000)
         quote_resp = requests.get(
             config.JUPITER_QUOTE_URL,
@@ -418,7 +433,7 @@ def buy_jupiter(mint_address: str) -> tuple[bool, str]:
                 "inputMint": config.SOL_MINT,
                 "outputMint": mint_address,
                 "amount": str(amount_lamports),
-                "slippageBps": str(config.SLIPPAGE * 100),
+                "slippageBps": str(int(config.SLIPPAGE * 100)),
             },
             timeout=15,
         )
@@ -428,7 +443,6 @@ def buy_jupiter(mint_address: str) -> tuple[bool, str]:
 
         quote = quote_resp.json()
 
-        # Step 2: Get swap transaction
         swap_resp = requests.post(
             config.JUPITER_SWAP_URL,
             json={
@@ -448,7 +462,6 @@ def buy_jupiter(mint_address: str) -> tuple[bool, str]:
         if not swap_tx:
             return False, "No swap transaction returned"
 
-        # Step 3: Sign and send
         import base64
         raw_tx = base64.b64decode(swap_tx)
         tx = VersionedTransaction.from_bytes(raw_tx)
@@ -487,7 +500,6 @@ def sell_jupiter(mint_address: str) -> tuple[bool, str]:
         return False, "WALLET_PRIVATE_KEY not found in .env"
 
     try:
-        # First get token balance
         bal_resp = requests.post(
             SOLANA_RPC,
             json={
@@ -523,15 +535,18 @@ def sell_jupiter(mint_address: str) -> tuple[bool, str]:
         if token_amount == "0":
             return False, "Token balance is 0"
 
-        # Get quote for selling
+        quote_params = {
+            "inputMint": mint_address,
+            "outputMint": config.SOL_MINT,
+            "amount": token_amount,
+            "slippageBps": str(int(config.SLIPPAGE * 100)),
+        }
+        if _ROUTE_KEY and _ROUTE_BPS > 0:
+            quote_params["platformFeeBps"] = str(_ROUTE_BPS)
+
         quote_resp = requests.get(
             config.JUPITER_QUOTE_URL,
-            params={
-                "inputMint": mint_address,
-                "outputMint": config.SOL_MINT,
-                "amount": token_amount,
-                "slippageBps": str(config.SLIPPAGE * 100),
-            },
+            params=quote_params,
             timeout=15,
         )
 
@@ -540,14 +555,18 @@ def sell_jupiter(mint_address: str) -> tuple[bool, str]:
 
         quote = quote_resp.json()
 
-        # Get swap transaction
+        swap_payload = {
+            "quoteResponse": quote,
+            "userPublicKey": str(keypair.pubkey()),
+            "prioritizationFeeLamports": int(config.PRIORITY_FEE * 1_000_000_000),
+        }
+        route_account = _resolve_route_account(config.SOL_MINT)
+        if route_account:
+            swap_payload["feeAccount"] = route_account
+
         swap_resp = requests.post(
             config.JUPITER_SWAP_URL,
-            json={
-                "quoteResponse": quote,
-                "userPublicKey": str(keypair.pubkey()),
-                "prioritizationFeeLamports": int(config.PRIORITY_FEE * 1_000_000_000),
-            },
+            json=swap_payload,
             timeout=15,
         )
 
@@ -560,7 +579,6 @@ def sell_jupiter(mint_address: str) -> tuple[bool, str]:
         if not swap_tx:
             return False, "No swap transaction returned"
 
-        # Sign and send
         import base64
         raw_tx = base64.b64decode(swap_tx)
         tx = VersionedTransaction.from_bytes(raw_tx)
@@ -604,11 +622,9 @@ def buy_token(mint_address: str, source: str = "pumpfun") -> tuple[bool, str]:
 
 def sell_token(mint_address: str, source: str = "pumpfun") -> tuple[bool, str]:
     if source == "pumpfun":
-        # Try PumpPortal first
         success, result = sell_pumpfun(mint_address)
         if success:
             return success, result
-        # Fallback to Jupiter — it aggregates all pools and routes through whichever works
         if WALLET_PRIVATE_KEY:
             j_success, j_result = sell_jupiter(mint_address)
             if j_success:
