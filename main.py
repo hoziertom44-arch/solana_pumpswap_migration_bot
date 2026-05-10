@@ -9,10 +9,45 @@ import time
 import sys
 import os
 import re
-import select
 import websockets
 import requests
 from dotenv import load_dotenv
+
+# ── Cross-platform stdin input detection ────
+IS_WINDOWS = os.name == "nt"
+
+if IS_WINDOWS:
+    import msvcrt
+    _input_buffer = ""
+
+    def has_input() -> bool:
+        return msvcrt.kbhit()
+
+    def read_line() -> str:
+        """Read a full line from Windows console (non-blocking poll)."""
+        global _input_buffer
+        while msvcrt.kbhit():
+            ch = msvcrt.getwch()
+            if ch in ("\r", "\n"):
+                line = _input_buffer
+                _input_buffer = ""
+                print()  # echo newline
+                return line
+            elif ch == "\b":  # backspace
+                _input_buffer = _input_buffer[:-1]
+                print("\b \b", end="", flush=True)
+            else:
+                _input_buffer += ch
+                print(ch, end="", flush=True)
+        return ""
+else:
+    import select
+
+    def has_input() -> bool:
+        return sys.stdin in select.select([sys.stdin], [], [], 0)[0]
+
+    def read_line() -> str:
+        return sys.stdin.readline().strip()
 
 import config
 import trade
@@ -113,9 +148,9 @@ async def monitor_position():
             print_pnl_update(current_position, price_data, real_sol_out)
             last_pnl_update_time = now
 
-        # Check stdin for "sell" — non-blocking
-        if sys.stdin in select.select([sys.stdin], [], [], 0.3)[0]:
-            user_input = sys.stdin.readline().strip().lower()
+        # Check stdin for "sell" — non-blocking, cross-platform
+        if has_input():
+            user_input = read_line().lower()
             if user_input == "sell":
                 bal_before_buy = current_position.get("bal_before_buy", None)
                 bal_after_buy = current_position.get("bal_after_buy", None)
@@ -156,23 +191,31 @@ async def monitor_position():
 
 
 async def ask_continue() -> bool:
-    # Flush any leftover stdin input (prevents double-type issue)
-    import termios
-    try:
-        termios.tcflush(sys.stdin, termios.TCIFLUSH)
-    except:
-        pass
+    # Flush any leftover stdin input (Unix only)
+    if not IS_WINDOWS:
+        try:
+            import termios
+            termios.tcflush(sys.stdin, termios.TCIFLUSH)
+        except:
+            pass
+    else:
+        # Windows: drain msvcrt buffer
+        try:
+            while msvcrt.kbhit():
+                msvcrt.getwch()
+        except:
+            pass
 
     print_continue_prompt()
 
     while True:
-        if sys.stdin in select.select([sys.stdin], [], [], 0.5)[0]:
-            user_input = sys.stdin.readline().strip().lower()
+        if has_input():
+            user_input = read_line().lower()
             if user_input in ("yes", "y"):
                 return True
             elif user_input in ("no", "n"):
                 return False
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
 
 
 # ── Handle migration event ──────────────────
@@ -266,6 +309,11 @@ async def handle_migration(mint: str, source: str = "pumpfun", migration_queue_r
     # Buy
     print_buying(config.BUY_AMOUNT_SOL)
     success, result = trade.buy_token(mint, source)
+
+    if success:
+        # Wait for buy tx to confirm so Solscan can index it
+        trade.wait_for_confirmation(result, max_wait=15)
+
     print_buy_result(
         success,
         txid=result if success else None,
@@ -277,9 +325,7 @@ async def handle_migration(mint: str, source: str = "pumpfun", migration_queue_r
         last_buy_time = time.time()
         bought_mints.add(mint)
 
-        # Wait for buy tx to settle, then capture the post-buy balance
-        # This is what we'll compare against to detect sell completion
-        await asyncio.sleep(8)
+        # Capture post-buy balance for accurate sell PnL detection
         bal_after_buy = trade.get_sol_balance() or bal_before
 
         current_position = {
