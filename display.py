@@ -134,7 +134,7 @@ def print_new_token(data, source="pumpfun"):
     table.add_column(no_wrap=False)
 
     table.add_row("Name", f"[bold white]{name}[/] [{DIM}]({symbol})[/]")
-    table.add_row("Mint", f"[{ACCENT}]{mint}[/]")
+    table.add_row("Chart", f"[{ACCENT}]https://dexscreener.com/solana?q={mint}[/]")
     table.add_row("Chart", f"[{ACCENT}]https://dexscreener.com/solana/{mint}[/]")
 
     panel = Panel(
